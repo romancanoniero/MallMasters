@@ -1,0 +1,25 @@
+workflows:
+  scanner-ios-check:
+    name: Mall Masters Scanner - iOS build verification
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install XcodeGen
+        script: |
+          brew install xcodegen
+      - name: Generate Xcode project
+        script: |
+          cd apps/scanner-ios
+          xcodegen generate
+      - name: Compile for physical iOS device (unsigned verification)
+        script: |
+          cd apps/scanner-ios
+          xcodebuild -project MallMastersScanner.xcodeproj -scheme MallMastersScanner -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build | tee /tmp/mallmasters-ios-build.log
+    artifacts:
+      - /tmp/mallmasters-ios-build.log
+      - $HOME/Library/Developer/Xcode/DerivedData/**/Build/Products/Release-iphoneos/*.app
+# This workflow verifies compilation but does NOT create an installable signed IPA.
+# To distribute with TestFlight, configure the Apple Developer Portal integration
+# and signing profiles privately in Codemagic, then add a signed distribution workflow.
