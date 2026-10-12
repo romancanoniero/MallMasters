@@ -23,3 +23,45 @@ workflows:
 # This workflow verifies compilation but does NOT create an installable signed IPA.
 # To distribute with TestFlight, configure the Apple Developer Portal integration
 # and signing profiles privately in Codemagic, then add a signed distribution workflow.
+
+  visitor-android-check:
+    name: Mall Masters Visitor - Android compile and tests
+    instance_type: linux_x2
+    max_build_duration: 60
+    environment:
+      java: 17
+    scripts:
+      - name: Install Gradle
+        script: |
+          wget -q https://services.gradle.org/distributions/gradle-8.10.2-bin.zip -O /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          export PATH="/tmp/gradle-8.10.2/bin:$PATH"
+          cd apps/visitor-compose
+          gradle :composeApp:allTests :composeApp:assembleDebug --stacktrace
+    artifacts:
+      - apps/visitor-compose/composeApp/build/outputs/apk/debug/*.apk
+
+  visitor-ios-check:
+    name: Mall Masters Visitor - iOS unsigned verification
+    instance_type: mac_mini_m2
+    max_build_duration: 90
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install dependencies
+        script: |
+          brew install xcodegen gradle
+      - name: Compile Kotlin for iOS
+        script: |
+          cd apps/visitor-compose
+          gradle :composeApp:linkDebugFrameworkIosArm64 --stacktrace
+      - name: Generate Xcode host
+        script: |
+          cd apps/visitor-compose/iosApp
+          xcodegen generate
+      - name: Compile iOS app without signing
+        script: |
+          cd apps/visitor-compose
+          xcodebuild -project iosApp/MallMastersVisitor.xcodeproj -scheme MallMastersVisitor -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+# These are initial verification workflows, not production release or TestFlight delivery.
+# Verify Gradle/Kotlin and Xcode versions in Codemagic logs; adjust pinned versions as needed.
