@@ -1,11 +1,347 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mall Masters Visitor</title><style>body{margin:0;background:#091422;color:#e2f4ff;font-family:system-ui}header,section{padding:20px;max-width:850px;margin:auto}h1{font-size:20px;letter-spacing:3px}.map{position:relative;background:radial-gradient(#254b63,#091422 72%);border:1px solid #37667c;border-radius:22px;height:380px;overflow:hidden}svg{height:100%;width:100%}input{background:#142c40;color:white;border:1px solid #4d8297;border-radius:12px;padding:15px;width:100%;box-sizing:border-box;font-size:16px}button{background:#13354c;color:#d5faff;border:1px solid #4b8495;border-radius:12px;padding:10px;margin:3px}.active{background:#2ce0df;color:#081621}.controls{position:absolute;right:8px;top:12px;display:grid}.list{display:grid;gap:8px}.item{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #30566c;padding:8px}p,small{color:#abc9d7}.alert{color:#78eadd}</style></head><body><header><small>DEMO CONCEPTUAL · NO REPRESENTA PLANOS REALES</small><h1>MALL MASTERS</h1><h2>ION Orchard · Visitor</h2><p>Explorá plantas, buscá locales de ejemplo y visualizá rutas ilustrativas.</p></header><section><div class="map"><svg viewBox="0 0 480 360" id="scene"></svg><div class="controls" id="levels"></div></div><p><button id="all" class="active">Todas</button><button id="clear">Borrar ruta</button></p></section><section><input id="query" placeholder="Buscar locales y servicios…"><div class="list" id="results"></div><p class="alert" id="route">Seleccioná un destino para explorar la ruta.</p><small>La versión actual es un prototipo visual y no utiliza geolocalización ni mapas reales.</small></section><script>
-const ns="http://www.w3.org/2000/svg",data=[["Moda",2,173,112],["Tecnología",2,305,120],["Café",1,170,190],["Equipaje",1,315,191],["Servicios",0,175,264],["Belleza",0,310,270]];let floor=null,destination=null;
-const el=id=>document.getElementById(id);
-function shape(parent,tag,attrs,t){let e=document.createElementNS(ns,tag);Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));if(t!==undefined)e.textContent=t;parent.appendChild(e);return e}
-function draw(){let s=el("scene");s.replaceChildren();for(let i=0;i<3;i++){if(floor!==null&&floor!==i)continue;let y=280-i*80;shape(s,"polygon",{points:`75,${y-35} 235,${y-94} 405,${y-35} 235,${y+29}`,fill:i%2?"#17384e":"#21465c",stroke:"#4dbcc8","stroke-width":"2"});shape(s,"polygon",{points:`75,${y-35} 235,${y+29} 235,${y+43} 75,${y-21}`,fill:"#102b40",stroke:"#4dbcc8"});shape(s,"text",{x:32,y:y-25,fill:"#c5ebf4","font-size":"16"},`L${i}`)}
-data.forEach((d,idx)=>{if(floor!==null&&floor!==d[1])return;shape(s,"circle",{cx:d[2],cy:d[3],r:destination===idx?11:6,fill:destination===idx?"#ffbf63":"#5be7d9"});if(destination===idx)shape(s,"text",{x:d[2]+15,y:d[3]-8,fill:"#fff","font-size":"15"},d[0])});
-if(destination!==null){let d=data[destination];shape(s,"polyline",{points:`235,326 235,${d[3]+45} ${d[2]},${d[3]}`,fill:"none",stroke:"#ffd277","stroke-width":"4","stroke-dasharray":"8 5"});el("route").textContent=`Ruta de demostración: entrada → planta L${d[1]} → ${d[0]}. Aún no se calculan rutas reales.`}
-el("levels").replaceChildren();for(let i=2;i>=0;i--){let b=document.createElement("button");b.textContent="L"+i;b.className=floor===i?"active":"";b.onclick=()=>{floor=floor===i?null:i;draw()};el("levels").appendChild(b)}el("all").className=floor===null?"active":"";results()}
-function results(){el("results").replaceChildren();let q=el("query").value.toLowerCase();data.forEach((d,i)=>{if((floor!==null&&floor!==d[1])||!d[0].toLowerCase().includes(q))return;let row=document.createElement("div");row.className="item";let label=document.createElement("span");label.textContent=d[0]+" · L"+d[1];let btn=document.createElement("button");btn.textContent="Ir";btn.onclick=()=>{destination=i;floor=d[1];draw()};row.append(label,btn);el("results").appendChild(row)})}
-el("query").oninput=results;el("all").onclick=()=>{floor=null;draw()};el("clear").onclick=()=>{destination=null;el("route").textContent="Seleccioná un destino para explorar la ruta.";draw()};draw()
-</script></body></html>
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mall Masters · Visitor demo</title>
+  <style>
+    :root { color-scheme: dark; font-family: system-ui, -apple-system, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #091422; color: #e2f4ff; }
+    header, main { max-width: 1100px; padding: 18px; margin: 0 auto; }
+    h1 { font-size: 24px; letter-spacing: 3px; margin: 8px 0; }
+    h2 { font-size: 18px; margin: 0 0 12px; }
+    p, small { color: #abc9d7; line-height: 1.45; }
+    .eyebrow { color: #78eadd; font-size: 12px; font-weight: 700; letter-spacing: .9px; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(280px, 1fr); gap: 18px; }
+    .panel { background: #102639; border: 1px solid #37667c; border-radius: 20px; padding: 16px; min-width: 0; }
+    .map { position: relative; background: radial-gradient(#254b63, #091422 72%); border: 1px solid #37667c; border-radius: 15px; overflow: hidden; }
+    svg { display: block; width: 100%; aspect-ratio: 4 / 3; }
+    .controls { position: absolute; top: 8px; right: 8px; display: grid; gap: 3px; }
+    button { cursor: pointer; background: #13354c; color: #d5faff; border: 1px solid #4b8495; border-radius: 11px; padding: 10px 12px; font: inherit; }
+    button:hover:not(:disabled), button:focus-visible { border-color: #86fff1; outline: 2px solid #86fff1; outline-offset: 1px; }
+    button:disabled { cursor: not-allowed; opacity: .48; }
+    button.active, button[aria-pressed="true"] { background: #2ce0df; border-color: #2ce0df; color: #081621; }
+    .controls button { min-width: 48px; padding: 9px; }
+    .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    .legend { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin: 14px 0 0; color: #c2dae4; font-size: 13px; }
+    .dot { width: 12px; height: 12px; display: inline-block; border-radius: 50%; background: #5be7d9; vertical-align: middle; margin-right: 5px; }
+    .dot.friend { background: linear-gradient(135deg, #38ddce, #6f8dff); border: 2px solid white; }
+    .toggle { display: inline-flex; align-items: center; gap: 8px; color: #dfedf7; font-size: 14px; }
+    .toggle input { width: 18px; height: 18px; accent-color: #2ce0df; }
+    .friend-list { display: grid; gap: 8px; margin-top: 12px; }
+    .friend-row { display: flex; align-items: center; gap: 10px; padding: 11px; background: #17344a; border: 1px solid #345c75; border-radius: 12px; }
+    .friend-row.selected { border-color: #ffbb76; box-shadow: 0 0 0 1px #ffbb76 inset; }
+    .avatar { display: block; flex-shrink: 0; width: 44px; height: 44px; border-radius: 50%; object-fit: cover; object-position: center; background: #233e53; border: 2px solid #ecfbff; box-shadow: 0 3px 14px #0005; }
+    .friend-row.selected .avatar { border-color: #ffdc91; box-shadow: 0 0 0 3px #ffdc9140; }
+    .friend-row.no-location .avatar { filter: grayscale(.85); opacity: .72; }
+    .pin { filter: drop-shadow(0 4px 7px #000a); transition: filter .15s ease; }
+    .pin:hover { filter: drop-shadow(0 5px 10px #000b) brightness(1.08); }
+    .pin-photo, .pin-label, .pin-glow { pointer-events: none; }
+    .pin:focus-visible .pin-body { stroke: #2ce0df; stroke-width: 3; }
+    .pin.selected .pin-body { stroke: #ffe3a2; stroke-width: 3.5; }
+    .pin.selected .pin-ring { stroke: #ffe3a2; }
+    @media (prefers-reduced-motion: reduce) { .pin { transition: none; } }
+    .friend-details { flex: 1; min-width: 0; }
+    .friend-name { font-weight: 700; }
+    .friend-state { font-size: 12px; color: #c2d6e5; margin-top: 3px; }
+    .friend-row button { font-size: 13px; padding: 8px 10px; white-space: nowrap; }
+    .notice { padding: 10px 12px; border: 1px solid #37667c; border-radius: 12px; background: #0b2031; font-size: 13px; }
+    .notice strong { color: #78eadd; }
+    .muted { color: #abc9d7; }
+    .shops { margin-top: 18px; }
+    .search { width: 100%; background: #142c40; color: white; border: 1px solid #4d8297; border-radius: 12px; padding: 13px; font-size: 16px; }
+    .store-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .store-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: #17344a; border-radius: 10px; padding: 10px; }
+    .store-row span { min-width: 0; }
+    .store-row button { flex-shrink: 0; }
+    .pin { cursor: pointer; }
+    .pin:focus-visible { outline: none; }
+
+    .pin-label { paint-order: stroke; stroke: #091422; stroke-width: 4px; stroke-linejoin: round; font-weight: 700; }
+    .selected-info { min-height: 22px; color: #ffdc9d; }
+    @media (max-width: 780px) { .layout { grid-template-columns: 1fr; } .store-list { grid-template-columns: 1fr; } }
+    @media (max-width: 480px) { header, main { padding: 12px; } .panel { padding: 12px; } h1 { font-size: 21px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">DEMO CON DATOS FICTICIOS · SIN GEOLOCALIZACIÓN REAL</div>
+    <h1>MALL MASTERS</h1>
+    <p>ION Orchard · concepto visual. Explorá locales y probá los pines de amigos en distintas plantas.</p>
+  </header>
+  <main>
+    <div class="layout">
+      <section class="panel" aria-labelledby="map-title">
+        <h2 id="map-title">Mapa por plantas</h2>
+        <div class="map" id="map-container">
+          <svg viewBox="0 0 480 360" id="scene" role="group" aria-label="Mapa ficticio del centro comercial"></svg>
+          <div class="controls" id="levels" aria-label="Seleccionar planta"></div>
+        </div>
+        <div class="toolbar">
+          <button id="all" type="button" aria-pressed="true">Todas las plantas</button>
+          <button id="clear" type="button">Borrar selección</button>
+          <label class="toggle"><input id="show-friends" type="checkbox" checked> Mostrar pines de amigos</label>
+        </div>
+        <div class="legend"><span><span class="dot"></span>Locales</span><span><span class="dot friend"></span>Pines de amigos</span><span id="visible-count" aria-live="polite"></span></div>
+        <p class="muted">Este dibujo es ilustrativo: las posiciones, plantas y rutas no representan datos verificados del shopping.</p>
+      </section>
+      <section class="panel" aria-labelledby="friends-title">
+        <h2 id="friends-title">Amigos <small>· datos de prueba</small></h2>
+        <p>Elegí <strong>Ver pin</strong> para localizar un amigo que comparte su ubicación. También podés tocar su pin en el mapa.</p>
+        <div class="notice" id="friend-summary" role="status" aria-live="polite"></div>
+        <div id="friends" class="friend-list" role="list" aria-label="Lista de amigos"></div>
+        <p class="selected-info" id="friend-selected" role="status" aria-live="polite"></p>
+        <small>Fotos de perfil y ubicaciones generadas para esta demo. Si un amigo no comparte ubicación, su planta y posición no se muestran.</small>
+      </section>
+    </div>
+    <section class="panel shops" aria-labelledby="stores-title">
+      <h2 id="stores-title">Locales de ejemplo</h2>
+      <input id="query" class="search" type="search" placeholder="Buscar locales y servicios…" aria-label="Buscar locales y servicios">
+      <div id="results" class="store-list" aria-label="Locales disponibles"></div>
+      <p id="route" role="status" aria-live="polite">Seleccioná un local para explorar una ruta ilustrativa.</p>
+    </section>
+  </main>
+  <script>
+    "use strict";
+    const ns = "http://www.w3.org/2000/svg";
+    const mallId = "ion-concept", viewerId = "demo-visitor";
+    const shops = [
+      { name: "Moda", floor: 2, x: 173, y: 112 },
+      { name: "Tecnología", floor: 2, x: 305, y: 120 },
+      { name: "Café", floor: 1, x: 170, y: 190 },
+      { name: "Equipaje", floor: 1, x: 315, y: 191 },
+      { name: "Servicios", floor: 0, x: 175, y: 264 },
+      { name: "Belleza", floor: 0, x: 310, y: 270 }
+    ];
+    // Fictitious friends. Missing coordinates on non-sharing examples are intentional.
+    const friends = [
+      { id: "ana", name: "Ana", avatar: "assets/demo-faces/ana.webp", floor: 2, x: 243, y: 85, mallId, share: { recipientId: viewerId, expiresAt: 4102444800000, revoked: false } },
+      { id: "bruno", name: "Bruno", avatar: "assets/demo-faces/bruno.webp", floor: 1, x: 245, y: 165, mallId, share: { recipientId: viewerId, expiresAt: 4102444800000, revoked: false } },
+      { id: "carla", name: "Carla", avatar: "assets/demo-faces/carla.webp", floor: 0, x: 245, y: 245, mallId, share: { recipientId: viewerId, expiresAt: 4102444800000, revoked: false } },
+      { id: "diana", name: "Diana", avatar: "assets/demo-faces/diana.webp", share: { recipientId: viewerId, expiresAt: 4102444800000, revoked: true } },
+      { id: "emilio", name: "Emilio", avatar: "assets/demo-faces/emilio.webp", share: { recipientId: viewerId, expiresAt: 0, revoked: false } }
+    ];
+    let floor = null, destination = null, selectedFriendId = null;
+    const el = id => document.getElementById(id);
+    const consentAllows = (friend, now = Date.now()) => {
+      const share = friend.share;
+      return friend.mallId === mallId && !!share && !share.revoked &&
+        share.recipientId === viewerId && Number.isFinite(share.expiresAt) && now < share.expiresAt &&
+        [0, 1, 2].includes(friend.floor) && Number.isFinite(friend.x) && Number.isFinite(friend.y);
+    };
+    const permittedFriends = () => friends.filter(friend => consentAllows(friend));
+
+    function shape(parent, tag, attrs, text) {
+      const element = document.createElementNS(ns, tag);
+      Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, value));
+      if (text !== undefined) element.textContent = text;
+      parent.appendChild(element);
+      return element;
+    }
+
+    function selectFriend(friendId, fromMap = false) {
+      const friend = friends.find(item => item.id === friendId);
+      if (!friend || !consentAllows(friend)) return;
+      selectedFriendId = friend.id;
+      destination = null;
+      floor = friend.floor;
+      el("show-friends").checked = true;
+      draw();
+      const target = fromMap ? el(`friend-${friendId}`) : el("map-container");
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      if (!fromMap) {
+        const pin = Array.from(el("scene").querySelectorAll("[data-friend-id]"))
+          .find(item => item.getAttribute("data-friend-id") === friendId);
+        pin?.focus({ preventScroll: true });
+      }
+    }
+
+    function drawFriendPin(scene, friend) {
+      const active = selectedFriendId === friend.id;
+      // The anchor of each pin is the fictional map position (friend.x, friend.y).
+      // The same photographic avatar is used here and in the friend list.
+      const group = shape(scene, "g", {
+        transform: `translate(${friend.x} ${friend.y})`,
+        class: `pin${active ? " selected" : ""}`, "data-friend-id": friend.id,
+        role: "button", tabindex: "0",
+        "aria-label": `Ver a ${friend.name} en planta L${friend.floor}`,
+        "aria-pressed": String(active)
+      });
+      shape(group, "title", {}, `${friend.name} · planta L${friend.floor}`);
+      if (active) shape(group, "circle", { class: "pin-glow", cx: 0, cy: -30, r: 29,
+        fill: "#ffd591", opacity: .27 });
+      shape(group, "ellipse", { cx: 0, cy: 4, rx: 13, ry: 4, fill: "#091422", opacity: .38 });
+      shape(group, "path", {
+        d: "M0 7 C-6 -1 -22 -16 -22 -30 A22 22 0 1 1 22 -30 C22 -16 6 -1 0 7Z",
+        class: "pin-body", fill: active ? "#ffca75" : "#1fd7cb",
+        stroke: "#f6fdff", "stroke-width": 2.5, "stroke-linejoin": "round"
+      });
+      shape(group, "circle", { cx: 0, cy: -30, r: 18.5, fill: "#effaff" });
+      const clipId = `face-clip-${friend.id}`;
+      const defs = shape(group, "defs", {});
+      const clip = shape(defs, "clipPath", { id: clipId });
+      shape(clip, "circle", { cx: 0, cy: -30, r: 17 });
+      shape(group, "image", { class: "pin-photo", href: friend.avatar,
+        x: -17, y: -47, width: 34, height: 34,
+        "clip-path": `url(#${clipId})`, preserveAspectRatio: "xMidYMid slice" });
+      shape(group, "circle", { class: "pin-ring", cx: 0, cy: -30, r: 17.3,
+        fill: "none", stroke: "#fff", "stroke-width": 1.8 });
+      shape(group, "circle", { cx: 13, cy: -43, r: 5.3, fill: "#38e5ad", stroke: "#fff", "stroke-width": 1.8 });
+      const labelText = `${friend.name} · L${friend.floor}`;
+      const labelWidth = 78 + Math.max(0, friend.name.length - 4) * 7;
+      shape(group, "rect", { x: -labelWidth / 2, y: 10, width: labelWidth, height: 23,
+        rx: 11.5, fill: active ? "#254659" : "#112b41", stroke: active ? "#ffe0a6" : "#639baa", "stroke-width": 1 });
+      shape(group, "text", { x: 0, y: 25, "text-anchor": "middle", fill: "#fff", "font-size": 12,
+        class: "pin-label" }, labelText);
+      group.addEventListener("click", () => selectFriend(friend.id, true));
+      group.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectFriend(friend.id, true);
+        }
+      });
+    }
+
+    function renderFriends() {
+      const list = el("friends");
+      list.replaceChildren();
+      const permitted = permittedFriends();
+      const pinCount = el("show-friends").checked && permitted.length
+        ? permitted.filter(friend => floor === null || floor === friend.floor).length : 0;
+      el("friend-summary").textContent = `${permitted.length} de ${friends.length} amigos comparten su ubicación en esta demo.`;
+      el("visible-count").textContent = `${pinCount} pines en el mapa`;
+      for (const friend of friends) {
+        const visible = consentAllows(friend);
+        const row = document.createElement("div");
+        row.id = `friend-${friend.id}`;
+        row.className = `friend-row${selectedFriendId === friend.id ? " selected" : ""}${visible ? "" : " no-location"}`;
+        row.dataset.friendId = friend.id;
+        row.setAttribute("role", "listitem");
+        if (selectedFriendId === friend.id) row.setAttribute("aria-current", "true");
+        const avatar = document.createElement("img");
+        avatar.className = "avatar";
+        avatar.src = friend.avatar;
+        avatar.alt = `Foto de perfil ficticia de ${friend.name}`;
+        avatar.width = 44;
+        avatar.height = 44;
+        avatar.loading = "lazy";
+        const details = document.createElement("div");
+        details.className = "friend-details";
+        const name = document.createElement("div");
+        name.className = "friend-name";
+        name.textContent = friend.name;
+        const state = document.createElement("div");
+        state.className = "friend-state";
+        state.textContent = visible ? `Comparte ubicación · planta L${friend.floor}` : "Ubicación no disponible";
+        details.append(name, state);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = "Ver pin";
+        button.disabled = !visible;
+        button.setAttribute("aria-label", `Ver pin de ${friend.name}`);
+        button.addEventListener("click", () => selectFriend(friend.id));
+        row.append(avatar, details, button);
+        list.appendChild(row);
+      }
+      const selected = permitted.find(friend => friend.id === selectedFriendId);
+      el("friend-selected").textContent = selected ? `${selected.name} está en la planta L${selected.floor} (posición simulada).` : "Seleccioná un amigo para ver su pin.";
+    }
+
+    function renderShops() {
+      const results = el("results");
+      results.replaceChildren();
+      const query = el("query").value.trim().toLocaleLowerCase("es");
+      shops.forEach((shop, index) => {
+        if ((floor !== null && floor !== shop.floor) || !shop.name.toLocaleLowerCase("es").includes(query)) return;
+        const row = document.createElement("div");
+        row.className = "store-row";
+        const name = document.createElement("span");
+        name.textContent = `${shop.name} · L${shop.floor}`;
+        const button = document.createElement("button");
+        button.textContent = "Ir";
+        button.type = "button";
+        button.addEventListener("click", () => {
+          selectedFriendId = null;
+          destination = index;
+          floor = shop.floor;
+          draw();
+          el("map-container").scrollIntoView({ behavior: "smooth", block: "nearest" });
+        });
+        row.append(name, button);
+        results.appendChild(row);
+      });
+      if (!results.children.length) {
+        const empty = document.createElement("p");
+        empty.textContent = "No hay locales que coincidan con el filtro.";
+        results.appendChild(empty);
+      }
+    }
+
+    function selectFloor(nextFloor) {
+      floor = nextFloor;
+      if (destination !== null && (floor !== null && shops[destination].floor !== floor)) destination = null;
+      if (selectedFriendId !== null && floor !== null && friends.find(friend => friend.id === selectedFriendId)?.floor !== floor) selectedFriendId = null;
+      draw();
+    }
+
+    function draw() {
+      const visible = permittedFriends();
+      if (selectedFriendId && !visible.some(friend => friend.id === selectedFriendId)) selectedFriendId = null;
+      const scene = el("scene");
+      scene.replaceChildren();
+      for (let level = 0; level < 3; level++) {
+        if (floor !== null && floor !== level) continue;
+        const y = 280 - level * 80;
+        shape(scene, "polygon", {
+          points: `75,${y - 35} 235,${y - 94} 405,${y - 35} 235,${y + 29}`,
+          fill: level % 2 ? "#17384e" : "#21465c", stroke: "#4dbcc8", "stroke-width": 2
+        });
+        shape(scene, "polygon", {
+          points: `75,${y - 35} 235,${y + 29} 235,${y + 43} 75,${y - 21}`,
+          fill: "#102b40", stroke: "#4dbcc8"
+        });
+        shape(scene, "text", { x: 32, y: y - 25, fill: "#c5ebf4", "font-size": 16 }, `L${level}`);
+      }
+      shops.forEach((shop, index) => {
+        if (floor !== null && floor !== shop.floor) return;
+        shape(scene, "circle", {
+          cx: shop.x, cy: shop.y, r: destination === index ? 10 : 6,
+          fill: destination === index ? "#ffdd79" : "#5be7d9"
+        });
+        if (destination === index) shape(scene, "text", { x: shop.x + 13, y: shop.y - 10, fill: "#fff", "font-size": 14 }, shop.name);
+      });
+      if (destination !== null && (floor === null || shops[destination].floor === floor)) {
+        const shop = shops[destination];
+        shape(scene, "polyline", {
+          points: `235,326 235,${shop.y + 45} ${shop.x},${shop.y}`,
+          fill: "none", stroke: "#ffd277", "stroke-width": 4, "stroke-dasharray": "8 5"
+        });
+        el("route").textContent = `Ruta de demostración: entrada → planta L${shop.floor} → ${shop.name}. No representa navegación real.`;
+      } else {
+        el("route").textContent = "Seleccioná un local para explorar una ruta ilustrativa.";
+      }
+      if (el("show-friends").checked) visible.filter(friend => floor === null || friend.floor === floor).forEach(friend => drawFriendPin(scene, friend));
+      const levels = el("levels");
+      levels.replaceChildren();
+      for (let level = 2; level >= 0; level--) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = `L${level}`;
+        button.setAttribute("aria-pressed", String(floor === level));
+        button.addEventListener("click", () => selectFloor(floor === level ? null : level));
+        levels.appendChild(button);
+      }
+      el("all").setAttribute("aria-pressed", String(floor === null));
+      renderFriends();
+      renderShops();
+    }
+
+    el("all").addEventListener("click", () => selectFloor(null));
+    el("clear").addEventListener("click", () => { destination = null; selectedFriendId = null; draw(); });
+    el("show-friends").addEventListener("change", () => { if (!el("show-friends").checked) selectedFriendId = null; draw(); });
+    el("query").addEventListener("input", renderShops);
+    draw();
+  </script>
+</body>
+</html>
